@@ -1,10 +1,16 @@
+#define EIGEN_USE_THREADS
+
+#if GOOGLE_CUDA
+#define EIGEN_USE_GPU
+#endif
+
+#include "fluid_grid_functor.h"
+#include "add_buoyancy.h"
 #include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/shape_inference.h"
 #include "tensorflow/core/framework/op_kernel.h"
 
 using namespace tensorflow;
-
-namespace mantaflow {
 
 
 REGISTER_OP("AddBuoyancy")
@@ -21,6 +27,141 @@ REGISTER_OP("AddBuoyancy")
 
 using CPUDevice = Eigen::ThreadPoolDevice;
 using GPUDevice = Eigen::GpuDevice;
+
+/*
+void fKernel (Size size, void (*f)(int, int), int border, void (*fBorder)(int) ) {
+    int idx = 0;
+    int idxi = 0;
+
+    for (int x = 0; x < size.width; x++) {
+        bool xInside = x >= border && x < size.width - border;
+        for (int y = 0; y < size.height; y++) {
+            bool yInside = y >= border && y < size.height - border;
+            for (int z = 0; z < size.depth; z++) {
+                bool zInside = z > 0 && z < size.depth - 1;
+                for(int i = 0; i < size.dim; i++) {
+                    if(xInside && yInside && zInside) {
+                        f(idx, idxi);
+                    } else {
+                        fBorder(idx);
+                    }
+                    idxi++;
+                }
+                idx++;
+            }
+        }
+    }
+}
+
+*/
+
+/*
+  void doBuo(const CPUDevice& d, FluidGrid* fluidGrid, const float* force, float* out_vel) {
+      int idx = 0;
+      int idxi = 0;
+
+      for (int x = 0; x < fluidGrid->getWidth(); x++) {
+          bool xInside = x > 0 && x < fluidGrid->getWidth() - 1;
+
+          for (int y = 0; y < fluidGrid->getHeight(); y++) {
+              bool yInside = y > 0 && y < fluidGrid->getHeight() - 1;
+
+              for (int z = 0; z < fluidGrid->getDepth(); z++) {
+                  bool zInside = z > 0 && z < fluidGrid->getDepth() - 1;
+
+                  bool isIdxFluid = fluidGrid->isFluid(idx);
+                  //bool isIdxFluid = isFluid(flag_grid_flat.data(), idx);
+                  for(int i = 0; i < fluidGrid->getDimension(); i++) {
+                      float value = fluidGrid->vel[idxi];
+
+                      int idxNeighbour = idx + fluidGrid->getDimOffset(i);
+                      bool isNeighbourFluid = fluidGrid->isFluid(idxNeighbour);
+                      if(xInside && yInside && zInside && isIdxFluid && isNeighbourFluid) {
+                          value += (0.5f*force[i]) * (fluidGrid->den[idx] + fluidGrid->den[idxNeighbour]);
+                      }
+
+                      out_vel[idxi] = value;
+                      idxi++;
+                  }
+
+
+                  idx++;
+              }
+          }
+      }
+  }
+*/
+
+/*
+class FluidGridBuoyancy : public FluidGrid {
+    float* out_vel;
+    const float* force;
+
+    protected:
+        bool kernelCondition(int idx) {
+            return isFluid(idx);
+        }
+        void kernelFunction(int idx, int idxi, int i) {
+            float value = vel[idxi];
+
+            int idxNeighbour = idx + getDimOffset(i);
+            if(isFluid(idxNeighbour)) {
+                value += (0.5f*force[i]) * (den[idx] + den[idxNeighbour]);
+            }
+
+            out_vel[idxi] = value;
+        }
+        void kernelIdentity(int idxi) {
+            out_vel[idxi] = vel[idxi];
+        }
+
+    public:
+        void setParameter(float* out_vel, const float* force) {
+            this->out_vel = out_vel;
+            this->force = force;
+        }
+};
+
+*/
+
+// CPU specialization of actual computation.
+template <>
+struct AddBuoyancy<CPUDevice> {
+  void operator()(const CPUDevice& d, FluidGrid* fluidGrid, const float* force, float* out_vel) {
+      FluidGridFunctor fluidGridFunctor(fluidGrid);
+      FluidGridFunctor* pFluidGridFunctor = &fluidGridFunctor;
+
+      int idx = 0;
+      int idxi = 0;
+
+      for (int b = 0; b < pFluidGridFunctor->getBatches(); b++) {
+          for (int x = 0; x < pFluidGridFunctor->getWidth(); x++) {
+              bool xInside = x > 0 && x < pFluidGridFunctor->getWidth() - 1;
+              for (int y = 0; y < pFluidGridFunctor->getHeight(); y++) {
+                  bool yInside = y > 0 && y < pFluidGridFunctor->getHeight() - 1;
+                  for (int z = 0; z < pFluidGridFunctor->getDepth(); z++) {
+                      bool zInside = z > 0 && z < pFluidGridFunctor->getDepth() - 1;
+                      bool isIdxFluid = pFluidGridFunctor->isFluid(idx);
+                      for(int i = 0; i < pFluidGridFunctor->getDim(); i++) {
+                          float value = pFluidGridFunctor->getVel()[idxi];
+
+                          int idxNeighbour = idx +  pFluidGridFunctor->getDimOffset(i);
+                          bool isNeighbourFluid = pFluidGridFunctor->isFluid(idxNeighbour);
+                          if(xInside && yInside && zInside && isIdxFluid && isNeighbourFluid) {
+                              value += (0.5f*force[i]) * (pFluidGridFunctor->getDen()[idx] + pFluidGridFunctor->getDen()[idxNeighbour]);
+                          }
+
+                          out_vel[idxi] = value;
+                          idxi++;
+                      }
+                      idx++;
+                  }
+              }
+          }
+      }
+  }
+};
+
 
 
 template <typename Device>
@@ -42,50 +183,45 @@ class AddBuoyancyOp : public OpKernel {
 
     const Tensor& force_tensor = context->input(3);
     TensorShape force_shape = force_tensor.shape();
-    auto force_flat = force_tensor.flat<float>();
 
     // Create an output tensor
     Tensor* output_vel_tensor = NULL;
     OP_REQUIRES_OK(context, context->allocate_output(0, vel_shape, &output_vel_tensor));
 
-    auto output_vel_flat = output_vel_tensor->flat<float>();
+    FluidGrid fluidGrid;
+    fluidGrid.vel = input_vel_flat.data();
+    fluidGrid.den =  density_flat.data();
+    fluidGrid.flags = flag_grid_flat.data();
 
-    int width = vel_shape.dim_size(0);
-    int height = vel_shape.dim_size(1);
-    int depth = vel_shape.dim_size(2);
+    fluidGrid.batches   = vel_shape.dim_size(0);
+    fluidGrid.width     = vel_shape.dim_size(1);
+    fluidGrid.height    = vel_shape.dim_size(2);
+    fluidGrid.depth     = vel_shape.dim_size(3);
+    fluidGrid.dim       = force_shape.dim_size(0);
 
-    int dim = force_shape.dim_size(0);
+    AddBuoyancy<Device>()(
+        context->eigen_device<Device>(),
+        &fluidGrid,
+        force_tensor.flat<float>().data(),
+        output_vel_tensor->flat<float>().data());
 
-    int idx = 0;                        // int index = x + y*width + z*width*height;
-    int idxi = 0;                       // int index = idx*dim + i
+    /*
 
-    int dimOffset[3] = {-width*height, -width, -1 };
+    FluidGrid fluidGrid(flag_grid_flat.data(), density_flat.data(), input_vel_flat.data());
+    fluidGrid.setSize(vel_shape.dim_size(0), vel_shape.dim_size(1), vel_shape.dim_size(2));
+    fluidGrid.setDimension(force_shape.dim_size(0));
 
-    for (int x = 0; x < width; x++) {
-        bool xInside = x > 0 && x < width - 1;
-        for (int y = 0; y < height; y++) {
-            bool yInside = y > 0 && y < height - 1;
-            for (int z = 0; z < depth; z++) {
-                bool zInside = z > 0 && z < depth - 1;
-                bool isFluid = flag_grid_flat(idx) & 1;
-                for(int i = 0; i < dim; i++) {
-                    float value = input_vel_flat(idxi);
+    AddBuoyancy<Device>()(
+        context->eigen_device<Device>(),
+        &fluidGrid,
+        force_tensor.flat<float>().data(),
+        output_vel_tensor->flat<float>().data());
 
-                    int idxNeighbour = idx +  dimOffset[i];
-                    bool isNeighbourFluid = flag_grid_flat(idxNeighbour) & 1;
-                    if(xInside && yInside && zInside && isFluid && isNeighbourFluid) {
-                        value += (0.5f*force_flat(i)) * (density_flat(idx) + density_flat(idxNeighbour));
-                    }
+        */
 
-                    output_vel_flat(idxi) = value;
-                    idxi++;
-                }
-                idx++;
-            }
-        }
-    }
   }
 };
+
 
 // Register the CPU kernels.
                                         \
@@ -93,4 +229,19 @@ REGISTER_KERNEL_BUILDER(                                       \
       Name("AddBuoyancy").Device(DEVICE_CPU), AddBuoyancyOp<CPUDevice>);
 
 
-}
+
+
+
+
+#if GOOGLE_CUDA
+
+REGISTER_KERNEL_BUILDER(
+        Name("AddBuoyancy").Device(DEVICE_GPU), AddBuoyancyOp<GPUDevice>);
+
+#endif
+
+
+
+
+
+
