@@ -127,7 +127,8 @@ class FluidGridBuoyancy : public FluidGrid {
 // CPU specialization of actual computation.
 template <>
 struct AddBuoyancy<CPUDevice> {
-  void operator()(const CPUDevice& d, FluidGrid* fluidGrid, const float* force, float* out_vel) {
+  void operator()(const CPUDevice& d, const FluidGrid* fluidGrid, const float* force, float* out_vel) {
+
       FluidGridFunctor fluidGridFunctor(fluidGrid);
       FluidGridFunctor* pFluidGridFunctor = &fluidGridFunctor;
 
@@ -221,16 +222,18 @@ class AddBuoyancyOp : public OpKernel {
     OP_REQUIRES(context, isSameValue({vel_shape.dim_size(4), force_shape.dim_size(0)}),
                  errors::InvalidArgument("AddBuoyancy expects that the dimension size is equal for all inputs"));
 
-    FluidGrid fluidGrid;
-    fluidGrid.vel = input_vel_flat.data();
-    fluidGrid.den =  density_flat.data();
-    fluidGrid.flags = flag_grid_flat.data();
 
-    fluidGrid.batches   = vel_shape.dim_size(0);
-    fluidGrid.width     = vel_shape.dim_size(1);
-    fluidGrid.height    = vel_shape.dim_size(2);
-    fluidGrid.depth     = vel_shape.dim_size(3);
-    fluidGrid.dim       = force_shape.dim_size(0);
+    const FluidGrid fluidGrid = {
+        vel_shape.dim_size(0),              // batches
+        vel_shape.dim_size(1),              // width
+        vel_shape.dim_size(2),              // height
+        vel_shape.dim_size(3),              // depth
+        force_shape.dim_size(0),            // dim
+
+        input_vel_flat.data(),
+        density_flat.data(),
+        flag_grid_flat.data()
+    };
 
 
     // Create an output tensor
@@ -244,32 +247,18 @@ class AddBuoyancyOp : public OpKernel {
         force_tensor.flat<float>().data(),
         output_vel_tensor->flat<float>().data());
 
-    /*
-
-    FluidGrid fluidGrid(flag_grid_flat.data(), density_flat.data(), input_vel_flat.data());
-    fluidGrid.setSize(vel_shape.dim_size(0), vel_shape.dim_size(1), vel_shape.dim_size(2));
-    fluidGrid.setDimension(force_shape.dim_size(0));
-
-    AddBuoyancy<Device>()(
-        context->eigen_device<Device>(),
-        &fluidGrid,
-        force_tensor.flat<float>().data(),
-        output_vel_tensor->flat<float>().data());
-
-        */
-
   }
 };
 
 
 // Register the CPU kernels.
 
-/*
+
                                         \
 REGISTER_KERNEL_BUILDER(                                       \
       Name("AddBuoyancy").Device(DEVICE_CPU), AddBuoyancyOp<CPUDevice>);
 
-      */
+
 
 #if GOOGLE_CUDA
 

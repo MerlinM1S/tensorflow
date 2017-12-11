@@ -17,11 +17,11 @@
         };
 
 struct FluidGrid {
-    int batches;
-    int width;
-    int height;
-    int depth;
-    int dim;
+    long batches;
+    long width;
+    long height;
+    long depth;
+    long dim;
         
 
     const float* vel;

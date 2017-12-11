@@ -8,38 +8,38 @@ class FluidGridFunctor {
         int dimOffset[3];
         
     public: 
-        FluidGrid* fluidGrid;
+        const FluidGrid* pFluidGrid;
         
-        inline int getBatches()  { return fluidGrid->batches; };
-        inline int getWidth()      { return fluidGrid->width; };
-        inline int getHeight()     { return fluidGrid->height; };
-        inline int getDepth()      { return fluidGrid->depth; };
-        inline int getDim()        { return fluidGrid->dim; };
+        inline int getBatches()    { return pFluidGrid->batches; }
+        inline int getWidth()      { return pFluidGrid->width; }
+        inline int getHeight()     { return pFluidGrid->height; }
+        inline int getDepth()      { return pFluidGrid->depth; }
+        inline int getDim()        { return pFluidGrid->dim; }
         
 
-        inline const float* getVel() { return fluidGrid->vel; };
-        inline const float* getDen() { return fluidGrid->den; };
+        inline const float* getVel() { return pFluidGrid->vel; }
+        inline const float* getDen() { return pFluidGrid->den; }
         
         inline int getDimOffset(int dim) { return dimOffset[dim];}
         
-        inline bool isFluid(int idx)    const { return fluidGrid->flags[idx] & TypeFluid; }
-        inline bool isObstacle(int idx) const { return fluidGrid->flags[idx] & TypeObstacle; }
-        inline bool isInflow(int idx)   const { return fluidGrid->flags[idx] & TypeInflow; }
-        inline bool isEmpty(int idx)    const { return fluidGrid->flags[idx] & TypeEmpty; }
-        inline bool isOutflow(int idx)  const { return fluidGrid->flags[idx] & TypeOutflow; }
-        inline bool isOpen(int idx)     const { return fluidGrid->flags[idx] & TypeOpen; }
-        inline bool isStick(int idx)    const { return fluidGrid->flags[idx] & TypeStick; }
+        inline bool isFluid(int idx)    const { return pFluidGrid->flags[idx] & TypeFluid; }
+        inline bool isObstacle(int idx) const { return pFluidGrid->flags[idx] & TypeObstacle; }
+        inline bool isInflow(int idx)   const { return pFluidGrid->flags[idx] & TypeInflow; }
+        inline bool isEmpty(int idx)    const { return pFluidGrid->flags[idx] & TypeEmpty; }
+        inline bool isOutflow(int idx)  const { return pFluidGrid->flags[idx] & TypeOutflow; }
+        inline bool isOpen(int idx)     const { return pFluidGrid->flags[idx] & TypeOpen; }
+        inline bool isStick(int idx)    const { return pFluidGrid->flags[idx] & TypeStick; }
         
     public:
-        FluidGridFunctor (FluidGrid* fluidGrid);
+        FluidGridFunctor (const FluidGrid* pFluidGrid);
         
 };
 
-FluidGridFunctor::FluidGridFunctor (FluidGrid* fluidGrid) {
-    this->fluidGrid = fluidGrid;
+FluidGridFunctor::FluidGridFunctor (const FluidGrid* pFluidGrid) {
+    this->pFluidGrid = pFluidGrid;
     
-    dimOffset[0] = -fluidGrid->depth*fluidGrid->height;
-    dimOffset[1] = -fluidGrid->depth;
+    dimOffset[0] = -pFluidGrid->depth*pFluidGrid->height;
+    dimOffset[1] = -pFluidGrid->depth;
     dimOffset[2] = -1;
 }
 

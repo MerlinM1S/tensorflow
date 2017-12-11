@@ -10,7 +10,7 @@ using namespace tensorflow;
 
 template <typename Device>
 struct AddBuoyancy {
-  void operator()(const Device& d, FluidGrid* fluidGrid, const float* force, float* out_vel);
+  void operator()(const Device& d, const FluidGrid* fluidGrid, const float* force, float* out_vel);
 };
 
 #endif // ADD_BUOYANCY_H_
