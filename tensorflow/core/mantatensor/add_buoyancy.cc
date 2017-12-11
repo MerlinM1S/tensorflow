@@ -131,30 +131,31 @@ struct AddBuoyancy<CPUDevice> {
       FluidGridFunctor fluidGridFunctor(fluidGrid);
       FluidGridFunctor* pFluidGridFunctor = &fluidGridFunctor;
 
-      int idx = 0;
-      int idxi = 0;
-
       for (int b = 0; b < pFluidGridFunctor->getBatches(); b++) {
+          int i_b = b * pFluidGridFunctor->getWidth() * pFluidGridFunctor->getHeight() * pFluidGridFunctor->getDepth();
           for (int x = 0; x < pFluidGridFunctor->getWidth(); x++) {
-              bool xInside = x > 0 && x < pFluidGridFunctor->getWidth() - 1;
+              int i_bx = i_b + x*pFluidGridFunctor->getHeight() * pFluidGridFunctor->getDepth();
+              bool xInside = x >= 1 && x < pFluidGridFunctor->getWidth() - 1;
               for (int y = 0; y < pFluidGridFunctor->getHeight(); y++) {
-                  bool yInside = y > 0 && y < pFluidGridFunctor->getHeight() - 1;
+                  int i_bxy = i_bx + y * pFluidGridFunctor->getDepth();
+                  bool yInside = y >= 1 && y < pFluidGridFunctor->getHeight() - 1;
                   for (int z = 0; z < pFluidGridFunctor->getDepth(); z++) {
-                      bool zInside = z > 0 && z < pFluidGridFunctor->getDepth() - 1;
-                      bool isIdxFluid = pFluidGridFunctor->isFluid(idx);
-                      for(int i = 0; i < pFluidGridFunctor->getDim(); i++) {
-                          float value = pFluidGridFunctor->getVel()[idxi];
+                      int i_bxyz = i_bxy + z;
+                      bool zInside = z >= 1 && z < pFluidGridFunctor->getDepth() - 1;
+                      bool isIdxFluid = pFluidGridFunctor->isFluid(i_bxyz);
 
-                          int idxNeighbour = idx +  pFluidGridFunctor->getDimOffset(i);
+                      for(int i = 0; i < pFluidGridFunctor->getDim(); i++) {
+                          int i_bxyzi = i + i_bxyz*3;
+                          float value = pFluidGridFunctor->getVel()[i_bxyzi];
+
+                          int idxNeighbour = i_bxyz + pFluidGridFunctor->getDimOffset(i);
                           bool isNeighbourFluid = pFluidGridFunctor->isFluid(idxNeighbour);
                           if(xInside && yInside && zInside && isIdxFluid && isNeighbourFluid) {
-                              value += (0.5f*force[i]) * (pFluidGridFunctor->getDen()[idx] + pFluidGridFunctor->getDen()[idxNeighbour]);
+                              value += (0.5f*force[i]) * (pFluidGridFunctor->getDen()[i_bxyz] + pFluidGridFunctor->getDen()[idxNeighbour]);
                           }
 
-                          out_vel[idxi] = value;
-                          idxi++;
+                          out_vel[i_bxyzi] = value;
                       }
-                      idx++;
                   }
               }
           }
@@ -262,14 +263,13 @@ class AddBuoyancyOp : public OpKernel {
 
 
 // Register the CPU kernels.
+
+/*
                                         \
 REGISTER_KERNEL_BUILDER(                                       \
       Name("AddBuoyancy").Device(DEVICE_CPU), AddBuoyancyOp<CPUDevice>);
 
-
-
-
-
+      */
 
 #if GOOGLE_CUDA
 
