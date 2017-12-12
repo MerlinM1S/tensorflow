@@ -148,7 +148,7 @@ struct AddBuoyancy<CPUDevice> {
                           int i_bxyzd = d + i_bxyz*3;
                           float value = pFluidGridFunctor->getVelGrid()[i_bxyzd];
 
-                          int i_neighbour = i_bxyz - pFluidGridFunctor->i_bxyz_offset(i);
+                          int i_neighbour = i_bxyz - pFluidGridFunctor->i_bxyz_offset(d);
                           bool isNeighbourFluid = pFluidGridFunctor->isFluid(i_neighbour);
                           if(xInside && yInside && zInside && isIdxFluid && isNeighbourFluid) {
                               value += (0.5f*force[d]) * (pFluidGridFunctor->getDenGrid()[i_bxyz] + pFluidGridFunctor->getDenGrid()[i_neighbour]);
@@ -193,7 +193,7 @@ class AddBuoyancyOp : public OpKernel {
                  errors::InvalidArgument("AddBuoyancy expects as second parameter a 4-D int flags array: batches, width, height, depth"));
     OP_REQUIRES(context, density_shape.dims() == 4,
                  errors::InvalidArgument("AddBuoyancy expects as third parameter a 4-D float density array: batches, width, height, depth"));
-    OP_REQUIRES(context, force_shape.dims() == 1,
+    OP_REQUIRES(context, TensorShapeUtils::IsVector(force_shape),
                  errors::InvalidArgument("AddBuoyancy expects as fourth parameter a 1-D float force array: dimension"));
 
 

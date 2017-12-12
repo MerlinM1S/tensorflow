@@ -8,7 +8,7 @@ using namespace tensorflow;
 
 template <typename Device>
 struct Advection {
-  void operator()(const Device& d, const FluidGrid* fluidGrid, const float dt, const float* in_grid, float* out_grid);
+    void operator()(const Device& d, const FluidGrid* fluidGrid, const float dt, const float* in_grid, float* out_grid, const int orderSpace);
 };
 
 
@@ -36,6 +36,7 @@ REGISTER_OP("Advection")
     .Input("flags_grid: int32")
     .Input("vel_grid: float")
     .Input("dt: float")
+    .Input("order_space: int32")
     .Output("out_grid: float")
     .SetShapeFn([](::tensorflow::shape_inference::InferenceContext* c) {
       c->set_output(0, c->input(0));
@@ -52,40 +53,40 @@ using GPUDevice = Eigen::GpuDevice;
 // CPU specialization of actual computation.
 template <>
 struct Advection<CPUDevice> {
-  void operator()(const CPUDevice& d, const FluidGrid* fluidGrid, const float dt, const float* in_grid, float* out_grid) {
-      FluidGridFunctor fluidGridFunctor(fluidGrid);
-      FluidGridFunctor* pFluidGridFunctor = &fluidGridFunctor;
-      // traceback position
-      //Vec3 pos = Vec3(i+0.5f,j+0.5f,k+0.5f) - vel.getCentered(i,j,k) * dt;
-      //dst(i,j,k) = src.getInterpolatedHi(pos, orderSpace);
-      // 		case 1:  return interpol     <T>(mData, mSize, mStrideZ, pos);
+    void operator()(const CPUDevice& d, const FluidGrid* fluidGrid, const float dt, const float* in_grid, float* out_grid, const int orderSpace) {
+        FluidGridFunctor fluidGridFunctor(fluidGrid);
+        FluidGridFunctor* pFluidGridFunctor = &fluidGridFunctor;
 
+        for (int b = 0; b < pFluidGridFunctor->getBatches(); b++) {
+            int i_b = b * pFluidGridFunctor->getWidth() * pFluidGridFunctor->getHeight() * pFluidGridFunctor->getDepth();
+            for (int x = 0; x < pFluidGridFunctor->getWidth(); x++) {
+                int i_bx = i_b + x*pFluidGridFunctor->getHeight() * pFluidGridFunctor->getDepth();
+                bool xInside = x >= 1 && x < pFluidGridFunctor->getWidth() - 1;
+                for (int y = 0; y < pFluidGridFunctor->getHeight(); y++) {
+                    int i_bxy = i_bx + y * pFluidGridFunctor->getDepth();
+                    bool yInside = y >= 1 && y < pFluidGridFunctor->getHeight() - 1;
+                    for (int z = 0; z < pFluidGridFunctor->getDepth(); z++) {
+                        int i_bxyz = i_bxy + z;
+                        bool zInside = z >= 1 && z < pFluidGridFunctor->getDepth() - 1;
 
-
-      for (int b = 0; b < pFluidGridFunctor->getBatches(); b++) {
-          int i_b = b * pFluidGridFunctor->getWidth() * pFluidGridFunctor->getHeight() * pFluidGridFunctor->getDepth();
-          for (int x = 0; x < pFluidGridFunctor->getWidth(); x++) {
-              int i_bx = i_b + x*pFluidGridFunctor->getHeight() * pFluidGridFunctor->getDepth();
-              bool xInside = x >= 1 && x < pFluidGridFunctor->getWidth() - 1;
-              for (int y = 0; y < pFluidGridFunctor->getHeight(); y++) {
-                  int i_bxy = i_bx + y * pFluidGridFunctor->getDepth();
-                  bool yInside = y >= 1 && y < pFluidGridFunctor->getHeight() - 1;
-                  for (int z = 0; z < pFluidGridFunctor->getDepth(); z++) {
-                      int i_bxyz = i_bxy + z;
-                      bool zInside = z >= 1 && z < pFluidGridFunctor->getDepth() - 1;
-
-                      if(xInside && yInside && zInside) {
-                          Vec3 pos = Vec3(x+0.5f,y+0.5f,z+0.5f) - pFluidGridFunctor->getCenteredVel(i_bxyz) * dt;
-                          out_grid[i_bxyz] = pFluidGridFunctor->interpolate(in_grid, pos, b);
-                      } else {
-                            out_grid[i_bxyz] = 0;
-                      }
-                  }
-              }
-          }
-      }
-
-  }
+                        if(xInside && yInside && zInside) {
+                            Vec3 pos = Vec3(x+0.5f, y+0.5f, z+0.5f) - pFluidGridFunctor->getCenteredVel(i_bxyz) * dt;
+                            switch(orderSpace) {
+                            case 1:
+                                out_grid[i_bxyz] = pFluidGridFunctor->interpolate(in_grid, pos, b);
+                                break;
+                            case 2:
+                                out_grid[i_bxyz] = pFluidGridFunctor->interpolateCubic(in_grid, pos, b);
+                                break;
+                            }
+                        } else {
+                          out_grid[i_bxyz] = 0;
+                        }
+                    }
+                }
+            }
+        }
+    }
 };
 
 
@@ -113,6 +114,9 @@ class AdvectionOp : public OpKernel {
 
     const Tensor& dt_tensor = context->input(3);
     TensorShape dt_shape = dt_tensor.shape();
+
+    const Tensor& order_space_tensor = context->input(4);
+    TensorShape order_space_shape = order_space_tensor.shape();
 
     /*
 
@@ -163,7 +167,8 @@ class AdvectionOp : public OpKernel {
         &fluidGrid,
         dt_tensor.flat<float>().data()[0],
         input_grid_flat.data(),
-        output_grid_tensor->flat<float>().data());
+        output_grid_tensor->flat<float>().data(),
+        order_space_tensor.flat<int>().data()[0]);
 
   }
 };

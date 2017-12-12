@@ -84,17 +84,5 @@ enum Direction {
 
 
 
-#include <iostream>
-#include <initializer_list>
-
-
-bool isSameValue(std::initializer_list<long> list)
-{
-    for (int i = 1; i < list.size(); i++)
-        if(list.begin()[0] != list.begin()[i])
-            return false;
-    return true;
-}
-
 
 #endif // FLUID_GRID_H_
