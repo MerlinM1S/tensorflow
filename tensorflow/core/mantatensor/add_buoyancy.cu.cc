@@ -32,12 +32,12 @@ __global__ void AddBuoyancyKernel(const FluidGridFunctorGPU fluidGridFunctor,  c
                     for(int i = 0; i < fluidGridFunctor.getDim(); i++) {
 
                         int i_bxyzi = i + i_bxyz*3;
-                        float value = fluidGridFunctor.getVel()[i_bxyzi];
+                        float value = fluidGridFunctor.getVelGrid()[i_bxyzi];
 
-                        int idxNeighbour = i_bxyz + fluidGridFunctor.getDimOffset(i);
+                        int idxNeighbour = i_bxyz - fluidGridFunctor.getDimOffset(i);
                         bool isNeighbourFluid = fluidGridFunctor.isFluid(idxNeighbour);
                         if(xInside && yInside && zInside && isIdxFluid && isNeighbourFluid) {
-                            value += (0.5f*force[i]) * (fluidGridFunctor.getDen()[i_bxyz] + fluidGridFunctor.getDen()[idxNeighbour]);
+                            value += (0.5f*force[i]) * (fluidGridFunctor.getDenGrid()[i_bxyz] + fluidGridFunctor.getDenGrid()[idxNeighbour]);
                         }
 
                         out_vel[i_bxyzi] = value;

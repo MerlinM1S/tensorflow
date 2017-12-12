@@ -27,10 +27,10 @@ class FluidGridFunctorGPU {
         __device__ int getDim()     const { return dim; };
         
 
-        __device__ const float* getVel() const { return vel; };
-        __device__ const float* getDen() const { return den; };
+        __device__ const float* getVelGrid() const { return vel; };
+        __device__ const float* getDenGrid() const { return den; };
         
-        __device__ int getDimOffset(int dim) const { return dimOffset[dim];}
+        __device__ int getDimOffset(int direction) const { return dimOffset[dim];}
         
         __device__ bool isFluid(int idx)    const { return flags[idx] & TypeFluid; }
         __device__ bool isObstacle(int idx) const { return flags[idx] & TypeObstacle; }

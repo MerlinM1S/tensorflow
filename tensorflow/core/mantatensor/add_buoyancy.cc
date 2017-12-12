@@ -128,7 +128,6 @@ class FluidGridBuoyancy : public FluidGrid {
 template <>
 struct AddBuoyancy<CPUDevice> {
   void operator()(const CPUDevice& d, const FluidGrid* fluidGrid, const float* force, float* out_vel) {
-
       FluidGridFunctor fluidGridFunctor(fluidGrid);
       FluidGridFunctor* pFluidGridFunctor = &fluidGridFunctor;
 
@@ -145,17 +144,17 @@ struct AddBuoyancy<CPUDevice> {
                       bool zInside = z >= 1 && z < pFluidGridFunctor->getDepth() - 1;
                       bool isIdxFluid = pFluidGridFunctor->isFluid(i_bxyz);
 
-                      for(int i = 0; i < pFluidGridFunctor->getDim(); i++) {
-                          int i_bxyzi = i + i_bxyz*3;
-                          float value = pFluidGridFunctor->getVel()[i_bxyzi];
+                      for(int d = 0; d < pFluidGridFunctor->getDim(); d++) {
+                          int i_bxyzd = d + i_bxyz*3;
+                          float value = pFluidGridFunctor->getVelGrid()[i_bxyzd];
 
-                          int idxNeighbour = i_bxyz + pFluidGridFunctor->getDimOffset(i);
-                          bool isNeighbourFluid = pFluidGridFunctor->isFluid(idxNeighbour);
+                          int i_neighbour = i_bxyz - pFluidGridFunctor->i_bxyz_offset(i);
+                          bool isNeighbourFluid = pFluidGridFunctor->isFluid(i_neighbour);
                           if(xInside && yInside && zInside && isIdxFluid && isNeighbourFluid) {
-                              value += (0.5f*force[i]) * (pFluidGridFunctor->getDen()[i_bxyz] + pFluidGridFunctor->getDen()[idxNeighbour]);
+                              value += (0.5f*force[d]) * (pFluidGridFunctor->getDenGrid()[i_bxyz] + pFluidGridFunctor->getDenGrid()[i_neighbour]);
                           }
 
-                          out_vel[i_bxyzi] = value;
+                          out_vel[i_bxyzd] = value;
                       }
                   }
               }
@@ -163,19 +162,6 @@ struct AddBuoyancy<CPUDevice> {
       }
   }
 };
-
-#include <iostream>
-#include <initializer_list>
-
-
-bool isSameValue(std::initializer_list<long> list)
-{
-
-    for (int i = 1; i < list.size(); i++)
-        if(list.begin()[0] != list.begin()[i])
-            return false;
-    return true;
-}
 
 template <typename Device>
 class AddBuoyancyOp : public OpKernel {
