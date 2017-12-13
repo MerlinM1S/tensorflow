@@ -8,5 +8,5 @@ tf_custom_op_library(
 
 tf_custom_op_library(
     name = "advection.so",
-    srcs = ["advection.cc", "fluid_grid.h", "fluid_grid_functor.h"],
+    srcs = ["advection.cc", "fluid_grid.h", "fluid_grid_functor.h", "interpolation.h"],
 )

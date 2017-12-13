@@ -32,6 +32,7 @@ struct FluidGrid {
 
 
 
+
 struct Vec3 {
     float x;
     float y;
@@ -76,6 +77,7 @@ enum Direction {
     DirectionRight          = 0, 
     DirectionUp             = 1, 
     DirectionForward        = 2,
+    
     DirectionRightUp        = 3,
     DirectionRightForward   = 4,
     DirectionUpForward      = 5,
