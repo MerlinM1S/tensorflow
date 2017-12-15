@@ -6,6 +6,7 @@
 
 #include "fluid_grid_functor.h"
 #include "add_buoyancy.h"
+#include "kernel_base.h"
 #include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/shape_inference.h"
 #include "tensorflow/core/framework/op_kernel.h"
@@ -55,42 +56,6 @@ void fKernel (Size size, void (*f)(int, int), int border, void (*fBorder)(int) )
 
 */
 
-/*
-  void doBuo(const CPUDevice& d, FluidGrid* fluidGrid, const float* force, float* out_vel) {
-      int idx = 0;
-      int idxi = 0;
-
-      for (int x = 0; x < fluidGrid->getWidth(); x++) {
-          bool xInside = x > 0 && x < fluidGrid->getWidth() - 1;
-
-          for (int y = 0; y < fluidGrid->getHeight(); y++) {
-              bool yInside = y > 0 && y < fluidGrid->getHeight() - 1;
-
-              for (int z = 0; z < fluidGrid->getDepth(); z++) {
-                  bool zInside = z > 0 && z < fluidGrid->getDepth() - 1;
-
-                  bool isIdxFluid = fluidGrid->isFluid(idx);
-                  //bool isIdxFluid = isFluid(flag_grid_flat.data(), idx);
-                  for(int i = 0; i < fluidGrid->getDimension(); i++) {
-                      float value = fluidGrid->vel[idxi];
-
-                      int idxNeighbour = idx + fluidGrid->getDimOffset(i);
-                      bool isNeighbourFluid = fluidGrid->isFluid(idxNeighbour);
-                      if(xInside && yInside && zInside && isIdxFluid && isNeighbourFluid) {
-                          value += (0.5f*force[i]) * (fluidGrid->den[idx] + fluidGrid->den[idxNeighbour]);
-                      }
-
-                      out_vel[idxi] = value;
-                      idxi++;
-                  }
-
-
-                  idx++;
-              }
-          }
-      }
-  }
-*/
 
 /*
 class FluidGridBuoyancy : public FluidGrid {
@@ -124,42 +89,50 @@ class FluidGridBuoyancy : public FluidGrid {
 
 */
 
+
+class KernelBuoyancy : public KernelBase {
+    private:
+        float* out_vel;
+        const float* force;
+
+    protected:
+        inline void kernelFunction(int i_bxyz) {
+            if(!fluidGridFunctor.isFluid(i_bxyz)) {
+                kernelIdentity(i_bxyz);
+                return;
+            }
+
+            for(int d = 0; d < fluidGridFunctor.getDim(); d++) {
+                int i_bxyzd = get_i_bxyzd(i_bxyz, d);
+                float value = fluidGridFunctor.getVelGrid()[i_bxyzd];
+
+                int idxNeighbour = i_bxyz - fluidGridFunctor.gridData1D.getOffset(d);
+                if(fluidGridFunctor.isFluid(idxNeighbour)) {
+                    value += (0.5f*force[d]) * (fluidGridFunctor.getDenGrid()[i_bxyz] + fluidGridFunctor.getDenGrid()[idxNeighbour]);
+                }
+
+                out_vel[i_bxyzd] = value;
+            }
+        }
+
+        inline void kernelIdentityDim(int i_bxyzd) {
+            out_vel[i_bxyzd] = fluidGridFunctor.getVelGrid()[i_bxyzd];
+        }
+
+    public:
+        KernelBuoyancy(const FluidGridFunctor& fluidGridFunctor, float* out_vel, const float* force) : KernelBase(fluidGridFunctor, 1) {
+            this->out_vel = out_vel;
+            this->force = force;
+        }
+};
+
 // CPU specialization of actual computation.
 template <>
 struct AddBuoyancy<CPUDevice> {
-  void operator()(const CPUDevice& d, const FluidGrid* fluidGrid, const float* force, float* out_vel) {
-      FluidGridFunctor fluidGridFunctor(fluidGrid);
-      FluidGridFunctor* pFluidGridFunctor = &fluidGridFunctor;
+    void operator()(const CPUDevice& d, const FluidGrid* fluidGrid, const float* force, float* out_vel) {
+        FluidGridFunctor fluidGridFunctor(fluidGrid);
 
-      for (int b = 0; b < pFluidGridFunctor->getBatches(); b++) {
-          int i_b = b * pFluidGridFunctor->getWidth() * pFluidGridFunctor->getHeight() * pFluidGridFunctor->getDepth();
-          for (int x = 0; x < pFluidGridFunctor->getWidth(); x++) {
-              int i_bx = i_b + x*pFluidGridFunctor->getHeight() * pFluidGridFunctor->getDepth();
-              bool xInside = x >= 1 && x < pFluidGridFunctor->getWidth() - 1;
-              for (int y = 0; y < pFluidGridFunctor->getHeight(); y++) {
-                  int i_bxy = i_bx + y * pFluidGridFunctor->getDepth();
-                  bool yInside = y >= 1 && y < pFluidGridFunctor->getHeight() - 1;
-                  for (int z = 0; z < pFluidGridFunctor->getDepth(); z++) {
-                      int i_bxyz = i_bxy + z;
-                      bool zInside = z >= 1 && z < pFluidGridFunctor->getDepth() - 1;
-                      bool isIdxFluid = pFluidGridFunctor->isFluid(i_bxyz);
-
-                      for(int d = 0; d < pFluidGridFunctor->getDim(); d++) {
-                          int i_bxyzd = d + i_bxyz*3;
-                          float value = pFluidGridFunctor->getVelGrid()[i_bxyzd];
-
-                          int i_neighbour = i_bxyz - pFluidGridFunctor->gridData1D.getOffset(d);
-                          bool isNeighbourFluid = pFluidGridFunctor->isFluid(i_neighbour);
-                          if(xInside && yInside && zInside && isIdxFluid && isNeighbourFluid) {
-                              value += (0.5f*force[d]) * (pFluidGridFunctor->getDenGrid()[i_bxyz] + pFluidGridFunctor->getDenGrid()[i_neighbour]);
-                          }
-
-                          out_vel[i_bxyzd] = value;
-                      }
-                  }
-              }
-          }
-      }
+        KernelBuoyancy(fluidGridFunctor, out_vel, force).run();
   }
 };
 
@@ -239,11 +212,11 @@ class AddBuoyancyOp : public OpKernel {
 
 // Register the CPU kernels.
 
-
+/*
                                         \
 REGISTER_KERNEL_BUILDER(                                       \
       Name("AddBuoyancy").Device(DEVICE_CPU), AddBuoyancyOp<CPUDevice>);
-
+*/
 
 
 #if GOOGLE_CUDA

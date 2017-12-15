@@ -44,11 +44,11 @@ struct CudaGridData {
 // TODO: Use __ldg
 class CudaFluidGridFunctor {
     private:
-        long batches;
-        long width;
-        long height;
-        long depth;
-        long dim;
+        const long batches;
+        const long width;
+        const long height;
+        const long depth;
+        const long dim;
         
 
         const float* vel;
@@ -88,13 +88,7 @@ class CudaFluidGridFunctor {
         
 };
 
-CudaFluidGridFunctor::CudaFluidGridFunctor (const FluidGrid* pFluidGrid) {  
-    this->batches   = pFluidGrid->batches;
-    this->width     = pFluidGrid->width;
-    this->height    = pFluidGrid->height;
-    this->depth     = pFluidGrid->depth;
-    this->dim       = pFluidGrid->dim;
-    
+CudaFluidGridFunctor::CudaFluidGridFunctor (const FluidGrid* pFluidGrid) : batches(pFluidGrid->batches), width(pFluidGrid->width), height(pFluidGrid->height), depth(pFluidGrid->depth), dim(pFluidGrid->dim) {  
     this->vel       = pFluidGrid->vel;
     this->den       = pFluidGrid->den;
     this->flags     = pFluidGrid->flags;
