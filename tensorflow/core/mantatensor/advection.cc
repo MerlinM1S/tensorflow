@@ -1,29 +1,10 @@
- 
-#include "tensorflow/core/framework/op.h"
-#include "tensorflow/core/framework/shape_inference.h"
-#include "fluid_grid.h"
-
-
-using namespace tensorflow;
-
-template <typename Device>
-struct Advection {
-    void advect1D(const Device& d, const FluidGrid* fluidGrid, const float dt, const float* in_grid, float* out_grid, const int orderSpace);
-    void advectMAC(const Device& d, const FluidGrid* fluidGrid, const float dt, const float* in_grid, float* out_grid, const int orderSpace);
-};
-
-
-
-
-
-
-
 #define EIGEN_USE_THREADS
 
 #if GOOGLE_CUDA
 #define EIGEN_USE_GPU
 #endif
 
+#include "advection.h"
 #include "fluid_grid_functor.h"
 #include "interpolation.h"
 #include "tensorflow/core/framework/op.h"
