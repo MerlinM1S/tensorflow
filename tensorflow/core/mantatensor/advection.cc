@@ -56,7 +56,7 @@ struct Advection<CPUDevice> {
                             Vec3 pos = Vec3(x+0.5f, y+0.5f, z+0.5f) - pFluidGridFunctor->getCenteredVel(i_bxyz) * dt;
                             switch(orderSpace) {
                             case 1:
-                                out_grid[i_bxyz] = interpolate(pFluidGridFunctor->gridInfo1D, in_grid, pos, b);
+                                out_grid[i_bxyz] = interpolate(pFluidGridFunctor->gridData1D, in_grid, pos, b);
                                 break;
                             case 2:
                                 //out_grid[i_bxyz] = interpolateCubic(pFluidGridFunctor->gridInfo1D, in_grid, pos, b);
@@ -94,13 +94,13 @@ struct Advection<CPUDevice> {
                             Vec3 posOffH = Vec3(x+0.5f, y+0.5f, z+0.5f);
 
                             Vec3 xpos = posOffH - pFluidGridFunctor->getVelMACX(i_bxyzd) * dt;
-                            out_grid[i_bxyzd + 0] = interpolate(pFluidGridFunctor->gridInfo, in_grid, xpos, b, 0);
+                            out_grid[i_bxyzd + 0] = interpolate(pFluidGridFunctor->gridData, in_grid, xpos, b, 0);
 
                             Vec3 ypos = posOffH - pFluidGridFunctor->getVelMACY(i_bxyzd) * dt;
-                            out_grid[i_bxyzd + 1] = interpolate(pFluidGridFunctor->gridInfo, in_grid, ypos, b, 1);
+                            out_grid[i_bxyzd + 1] = interpolate(pFluidGridFunctor->gridData, in_grid, ypos, b, 1);
 
                             Vec3 zpos = posOffH - pFluidGridFunctor->getVelMACZ(i_bxyzd) * dt;
-                            out_grid[i_bxyzd + 2] = interpolate(pFluidGridFunctor->gridInfo, in_grid, zpos, b, 2);
+                            out_grid[i_bxyzd + 2] = interpolate(pFluidGridFunctor->gridData, in_grid, zpos, b, 2);
 
 
 

@@ -3,7 +3,7 @@
 
 #include "fluid_grid.h"
 
-struct GridInfo {
+struct GridData {
     public:
         long batches;
         long width;
@@ -13,9 +13,9 @@ struct GridInfo {
         
         int indexOffset[7];
         
-        GridInfo() {}
+        GridData() {}
     
-        GridInfo (long batches, long width, long height, long depth, long dim) {
+        GridData (long batches, long width, long height, long depth, long dim) {
             this->batches   = batches;   
             this->width     = width;   
             this->height    = height;   
@@ -45,8 +45,8 @@ class FluidGridFunctor {
         
     public: 
         const FluidGrid* pFluidGrid;
-        GridInfo gridInfo1D;
-        GridInfo gridInfo;
+        GridData gridData1D;
+        GridData gridData;
         
         inline int getBatches()   const { return pFluidGrid->batches; }
         inline int getWidth()     const { return pFluidGrid->width; }
@@ -80,8 +80,8 @@ class FluidGridFunctor {
 FluidGridFunctor::FluidGridFunctor (const FluidGrid* pFluidGrid) {
     this->pFluidGrid = pFluidGrid;
     
-    gridInfo1D = GridInfo(pFluidGrid->batches, pFluidGrid->width, pFluidGrid->height, pFluidGrid->depth, 1);
-    gridInfo = GridInfo(pFluidGrid->batches, pFluidGrid->width, pFluidGrid->height, pFluidGrid->depth, pFluidGrid->dim);
+    gridData1D = GridData(pFluidGrid->batches, pFluidGrid->width, pFluidGrid->height, pFluidGrid->depth, 1);
+    gridData = GridData(pFluidGrid->batches, pFluidGrid->width, pFluidGrid->height, pFluidGrid->depth, pFluidGrid->dim);
 }
 
 
@@ -89,9 +89,9 @@ FluidGridFunctor::FluidGridFunctor (const FluidGrid* pFluidGrid) {
 inline Vec3 FluidGridFunctor::getCenteredVel(int i_bxyz) const {
     int i_bxyzd = i_bxyz * this->getDim();
     
-    float x = 0.5f * (getVelGrid()[i_bxyzd + 0] + getVelGrid()[gridInfo.offsetIndex(i_bxyzd, DirectionRight) + 0]);             
-    float y = 0.5f * (getVelGrid()[i_bxyzd + 1] + getVelGrid()[gridInfo.offsetIndex(i_bxyzd, DirectionUp) + 1]);
-    float z = 0.5f * (getVelGrid()[i_bxyzd + 2] + getVelGrid()[gridInfo.offsetIndex(i_bxyzd, DirectionForward) + 2]);
+    float x = 0.5f * (getVelGrid()[i_bxyzd + 0] + getVelGrid()[gridData.offsetIndex(i_bxyzd, DirectionRight) + 0]);             
+    float y = 0.5f * (getVelGrid()[i_bxyzd + 1] + getVelGrid()[gridData.offsetIndex(i_bxyzd, DirectionUp) + 1]);
+    float z = 0.5f * (getVelGrid()[i_bxyzd + 2] + getVelGrid()[gridData.offsetIndex(i_bxyzd, DirectionForward) + 2]);
     return Vec3(x, y, z);
 }
 
@@ -99,24 +99,24 @@ inline Vec3 FluidGridFunctor::getCenteredVel(int i_bxyz) const {
 
 inline Vec3 FluidGridFunctor::getVelMACX(int i_bxyzd) const {
     float x = getVelGrid()[i_bxyzd + 0];
-    float y = 0.25f * (getVelGrid()[i_bxyzd + 1] + getVelGrid()[gridInfo.offsetIndex(i_bxyzd, -1, 0, 0) + 1] + getVelGrid()[gridInfo.offsetIndex(i_bxyzd, 0, 1, 0) + 1] + getVelGrid()[gridInfo.offsetIndex(i_bxyzd, -1, 1, 0) + 1]);
-    float z = 0.25f * (getVelGrid()[i_bxyzd + 2] + getVelGrid()[gridInfo.offsetIndex(i_bxyzd, -1, 0, 0) + 2] + getVelGrid()[gridInfo.offsetIndex(i_bxyzd, 0, 0, 1) + 2] + getVelGrid()[gridInfo.offsetIndex(i_bxyzd, -1, 0, 1) + 2]);
+    float y = 0.25f * (getVelGrid()[i_bxyzd + 1] + getVelGrid()[gridData.offsetIndex(i_bxyzd, -1, 0, 0) + 1] + getVelGrid()[gridData.offsetIndex(i_bxyzd, 0, 1, 0) + 1] + getVelGrid()[gridData.offsetIndex(i_bxyzd, -1, 1, 0) + 1]);
+    float z = 0.25f * (getVelGrid()[i_bxyzd + 2] + getVelGrid()[gridData.offsetIndex(i_bxyzd, -1, 0, 0) + 2] + getVelGrid()[gridData.offsetIndex(i_bxyzd, 0, 0, 1) + 2] + getVelGrid()[gridData.offsetIndex(i_bxyzd, -1, 0, 1) + 2]);
     
     return Vec3(x, y, z);
 }
 
 inline Vec3 FluidGridFunctor::getVelMACY(int i_bxyzd) const {
-    float x = 0.25f * (getVelGrid()[i_bxyzd + 0] + getVelGrid()[gridInfo.offsetIndex(i_bxyzd, 0, -1, 0) + 0] + getVelGrid()[gridInfo.offsetIndex(i_bxyzd, 1, 0, 0) + 0] + getVelGrid()[gridInfo.offsetIndex(i_bxyzd, 1, -1, 0) + 0]);
+    float x = 0.25f * (getVelGrid()[i_bxyzd + 0] + getVelGrid()[gridData.offsetIndex(i_bxyzd, 0, -1, 0) + 0] + getVelGrid()[gridData.offsetIndex(i_bxyzd, 1, 0, 0) + 0] + getVelGrid()[gridData.offsetIndex(i_bxyzd, 1, -1, 0) + 0]);
     float y = getVelGrid()[i_bxyzd + 1];
-    float z = 0.25f * (getVelGrid()[i_bxyzd + 2] + getVelGrid()[gridInfo.offsetIndex(i_bxyzd, 0, -1, 0) + 2] + getVelGrid()[gridInfo.offsetIndex(i_bxyzd, 0, 0, 1) + 2] + getVelGrid()[gridInfo.offsetIndex(i_bxyzd, 0, -1, 1) + 2]);
+    float z = 0.25f * (getVelGrid()[i_bxyzd + 2] + getVelGrid()[gridData.offsetIndex(i_bxyzd, 0, -1, 0) + 2] + getVelGrid()[gridData.offsetIndex(i_bxyzd, 0, 0, 1) + 2] + getVelGrid()[gridData.offsetIndex(i_bxyzd, 0, -1, 1) + 2]);
     
     return Vec3(x, y, z);
 }
 
 
 inline Vec3 FluidGridFunctor::getVelMACZ(int i_bxyzd) const {
-    float x = 0.25f * (getVelGrid()[i_bxyzd + 0] + getVelGrid()[gridInfo.offsetIndex(i_bxyzd, 0, 0, -1) + 0] + getVelGrid()[gridInfo.offsetIndex(i_bxyzd, 1, 0, 0) + 0] + getVelGrid()[gridInfo.offsetIndex(i_bxyzd, 1, 0, -1) + 0]);
-    float y = 0.25f * (getVelGrid()[i_bxyzd + 1] + getVelGrid()[gridInfo.offsetIndex(i_bxyzd, 0, 0, -1) + 1] + getVelGrid()[gridInfo.offsetIndex(i_bxyzd, 0, 1, 0) + 1] + getVelGrid()[gridInfo.offsetIndex(i_bxyzd, 0, 1, -1) + 1]);
+    float x = 0.25f * (getVelGrid()[i_bxyzd + 0] + getVelGrid()[gridData.offsetIndex(i_bxyzd, 0, 0, -1) + 0] + getVelGrid()[gridData.offsetIndex(i_bxyzd, 1, 0, 0) + 0] + getVelGrid()[gridData.offsetIndex(i_bxyzd, 1, 0, -1) + 0]);
+    float y = 0.25f * (getVelGrid()[i_bxyzd + 1] + getVelGrid()[gridData.offsetIndex(i_bxyzd, 0, 0, -1) + 1] + getVelGrid()[gridData.offsetIndex(i_bxyzd, 0, 1, 0) + 1] + getVelGrid()[gridData.offsetIndex(i_bxyzd, 0, 1, -1) + 1]);
     float z = getVelGrid()[i_bxyzd + 2];
     
     return Vec3(x, y, z);

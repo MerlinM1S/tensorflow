@@ -4,7 +4,7 @@
 #include "fluid_grid_functor.h"
 
 
-inline float interpolate(const GridInfo& gridInfo, const float* grid, const Vec3& pos, const int b_i, const int d_i = 0) {
+inline float interpolate(const GridData& gridData, const float* grid, const Vec3& pos, const int b_i, const int d_i = 0) {
     float px = pos.x - 0.5f;
     float py = pos.y - 0.5f;
     float pz = pos.z - 0.5f; 
@@ -26,16 +26,16 @@ inline float interpolate(const GridInfo& gridInfo, const float* grid, const Vec3
     if (py < 0.0f) { y_i = 0; t0 = 1.0f; t1 = 0.0f; } 
     if (pz < 0.0f) { z_i = 0; f0 = 1.0f; f1 = 0.0f; } 
     
-    if (x_i >= gridInfo.width - 1)  { x_i = gridInfo.width - 2;     s0 = 0.0f; s1 = 1.0f; } 
-    if (y_i >= gridInfo.height - 1) { y_i = gridInfo.height - 2;    t0 = 0.0f; t1 = 1.0f; } 
-    if (z_i >= gridInfo.depth - 1)  { z_i = gridInfo.depth - 2;     f0 = 0.0f; f1 = 1.0f; }
+    if (x_i >= gridData.width - 1)  { x_i = gridData.width - 2;     s0 = 0.0f; s1 = 1.0f; } 
+    if (y_i >= gridData.height - 1) { y_i = gridData.height - 2;    t0 = 0.0f; t1 = 1.0f; } 
+    if (z_i >= gridData.depth - 1)  { z_i = gridData.depth - 2;     f0 = 0.0f; f1 = 1.0f; }
     
-    int index = gridInfo.convertToIndex(b_i, x_i, y_i, z_i, d_i);
+    int index = gridData.convertToIndex(b_i, x_i, y_i, z_i, d_i);
     
-    return  ((grid[index]                                               *t0 + grid[gridInfo.offsetIndex(index, DirectionUp)]             *t1) * s0
-           + (grid[gridInfo.offsetIndex(index, DirectionRight)]         *t0 + grid[gridInfo.offsetIndex(index, DirectionRightUp)]        *t1) * s1) * f0
-           +((grid[gridInfo.offsetIndex(index, DirectionForward)]       *t0 + grid[gridInfo.offsetIndex(index, DirectionUpForward)]      *t1) * s0
-           + (grid[gridInfo.offsetIndex(index, DirectionRightForward)]  *t0 + grid[gridInfo.offsetIndex(index, DirectionRightUpForward)] *t1) * s1) * f1;
+    return  ((grid[index]                                               *t0 + grid[gridData.offsetIndex(index, DirectionUp)]             *t1) * s0
+           + (grid[gridData.offsetIndex(index, DirectionRight)]         *t0 + grid[gridData.offsetIndex(index, DirectionRightUp)]        *t1) * s1) * f0
+           +((grid[gridData.offsetIndex(index, DirectionForward)]       *t0 + grid[gridData.offsetIndex(index, DirectionUpForward)]      *t1) * s0
+           + (grid[gridData.offsetIndex(index, DirectionRightForward)]  *t0 + grid[gridData.offsetIndex(index, DirectionRightUpForward)] *t1) * s1) * f1;
 }
 
 
@@ -59,7 +59,7 @@ inline float cubicInterp(const float interp, const float* points) {
   return a3 * cubed + a2 * squared + a1 * interp + a0;
 }
 
-inline float interpolateCubic(const GridInfo& gridInfo, const float* data, const Vec3& pos, const int i_b) { 
+inline float interpolateCubic(const GridData& gridData, const float* data, const Vec3& pos, const int i_b) { 
 	const float px = pos.x - 0.5f;
         const float py = pos.y - 0.5f;
         const float pz = pos.z - 0.5f; 
@@ -79,24 +79,24 @@ inline float interpolateCubic(const GridInfo& gridInfo, const float* data, const
 	const int z3    = z1 + 2;
 	const int z0    = z1 - 1;
 
-	if (x0 < 0 || y0 < 0 || z0 < 0 || x3 >= gridInfo.width || y3 >= gridInfo.height || z3 >= gridInfo.depth) {
-            return interpolate(gridInfo, data, pos, i_b);
+	if (x0 < 0 || y0 < 0 || z0 < 0 || x3 >= gridData.width || y3 >= gridData.height || z3 >= gridData.depth) {
+            return interpolate(gridData, data, pos, i_b);
 	}
 
 	const float xInterp = px - x1;
 	const float yInterp = py - y1;
 	const float zInterp = pz - z1;
 
-	const int slabsize = gridInfo.width * gridInfo.height;
+	const int slabsize = gridData.width * gridData.height;
 	const int z0Slab = z0 * slabsize;
 	const int z1Slab = z1 * slabsize;
 	const int z2Slab = z2 * slabsize;
 	const int z3Slab = z3 * slabsize;
 
-	const int y0x = y0 * gridInfo.width;
-	const int y1x = y1 * gridInfo.width;
-	const int y2x = y2 * gridInfo.width;
-	const int y3x = y3 * gridInfo.width;
+	const int y0x = y0 * gridData.width;
+	const int y1x = y1 * gridData.width;
+	const int y2x = y2 * gridData.width;
+	const int y3x = y3 * gridData.width;
 
 	const int y0z0 = y0x + z0Slab;
 	const int y1z0 = y1x + z0Slab;
