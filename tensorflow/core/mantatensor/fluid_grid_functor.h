@@ -2,6 +2,7 @@
 #define FLUID_GRID_FUNCTOR_H_
 
 #include "fluid_grid.h"
+#include "vec3.h"
 
 struct GridData {
     public:
@@ -33,6 +34,7 @@ struct GridData {
             indexOffset[(int) DirectionRightUpForward]  = indexOffset[DirectionRight] +  indexOffset[DirectionUp] + indexOffset[DirectionForward];
         }
         
+        inline int getOffset(int direction) const { return indexOffset[direction]; }
         inline int offsetIndex(int index, int direction) const { return index + indexOffset[direction]; }
         inline int offsetIndex(int index, int x_d, int y_d, int z_d) const { return index + x_d * indexOffset[(int) DirectionRight] + y_d * indexOffset[(int) DirectionUp] + z_d * indexOffset[(int) DirectionForward]; }
         

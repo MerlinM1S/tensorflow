@@ -11,7 +11,7 @@ using GPUDevice = Eigen::GpuDevice;
 
 // TODO: Use __ldg
 // Define the CUDA kernel.
-__global__ void AddBuoyancyKernel(const FluidGridFunctorGPU fluidGridFunctor,  const float* force, float* out_vel) {
+__global__ void AddBuoyancyKernel(const CudaFluidGridFunctor fluidGridFunctor,  const float* force, float* out_vel) {
 
 
 //= blockIdx.x * blockDim.x + threadIdx.x; x < pFluidGridFunctor->getWidth(); x += blockDim.x * gridDim.x
@@ -29,18 +29,18 @@ __global__ void AddBuoyancyKernel(const FluidGridFunctorGPU fluidGridFunctor,  c
                     bool zInside = z >= 1 && z < fluidGridFunctor.getDepth() - 1;
                     bool isIdxFluid = fluidGridFunctor.isFluid(i_bxyz);
 
-                    for(int i = 0; i < fluidGridFunctor.getDim(); i++) {
+                    for(int d = 0; d < fluidGridFunctor.getDim(); d++) {
 
-                        int i_bxyzi = i + i_bxyz*3;
-                        float value = fluidGridFunctor.getVelGrid()[i_bxyzi];
+                        int i_bxyzd = d + i_bxyz*3;
+                        float value = fluidGridFunctor.getVelGrid()[i_bxyzd];
 
-                        int idxNeighbour = i_bxyz - fluidGridFunctor.getDimOffset(i);
+                        int idxNeighbour = i_bxyz - fluidGridFunctor.gridData1D.getOffset(d);
                         bool isNeighbourFluid = fluidGridFunctor.isFluid(idxNeighbour);
                         if(xInside && yInside && zInside && isIdxFluid && isNeighbourFluid) {
-                            value += (0.5f*force[i]) * (fluidGridFunctor.getDenGrid()[i_bxyz] + fluidGridFunctor.getDenGrid()[idxNeighbour]);
+                            value += (0.5f*force[d]) * (fluidGridFunctor.getDenGrid()[i_bxyz] + fluidGridFunctor.getDenGrid()[idxNeighbour]);
                         }
 
-                        out_vel[i_bxyzi] = value;
+                        out_vel[i_bxyzd] = value;
 
                     }
                 }
@@ -56,7 +56,7 @@ template <>
 void AddBuoyancy<GPUDevice>::operator()(
     const GPUDevice& d, const FluidGrid* pFluidGrid, const float* force, float* out_vel) {
 
-    const FluidGridFunctorGPU fluidGridFunctor(pFluidGrid);
+    const CudaFluidGridFunctor fluidGridFunctor(pFluidGrid);
 
   // Launch the cuda kernel.
   //

@@ -148,7 +148,7 @@ struct AddBuoyancy<CPUDevice> {
                           int i_bxyzd = d + i_bxyz*3;
                           float value = pFluidGridFunctor->getVelGrid()[i_bxyzd];
 
-                          int i_neighbour = i_bxyz - pFluidGridFunctor->i_bxyz_offset(d);
+                          int i_neighbour = i_bxyz - pFluidGridFunctor->gridData1D.getOffset(d);
                           bool isNeighbourFluid = pFluidGridFunctor->isFluid(i_neighbour);
                           if(xInside && yInside && zInside && isIdxFluid && isNeighbourFluid) {
                               value += (0.5f*force[d]) * (pFluidGridFunctor->getDenGrid()[i_bxyz] + pFluidGridFunctor->getDenGrid()[i_neighbour]);
