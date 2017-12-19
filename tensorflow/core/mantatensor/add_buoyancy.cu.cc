@@ -55,9 +55,8 @@ class CudaKernelBuoyancy : public CudaKernelBase {
 
 // TODO: Use __ldg
 // Define the CUDA kernel.
-__global__ void AddBuoyancyKernel( const CudaFluidGridFunctor fluidGridFunctor, float* out_vel, const float* force) {
+__global__ void addBuoyancyKernel( const CudaFluidGridFunctor fluidGridFunctor, float* out_vel, const float* force) {
     //CudaKernelBuoyancy(fluidGridFunctor, out_vel, force).run();
-
 
     int border = 1;
     for (int b = 0; b < fluidGridFunctor.getBatches(); b++) {
@@ -74,7 +73,7 @@ __global__ void AddBuoyancyKernel( const CudaFluidGridFunctor fluidGridFunctor, 
                     bool zInside = z >= border && z < fluidGridFunctor.getDepth() - border;
 
                     for(int d = 0; d < fluidGridFunctor.getDim(); d++) {
-                        int i_bxyzd = i_bxyz*3 + d;
+                        int i_bxyzd = i_bxyz * fluidGridFunctor.getDim() + d;
 
                         int idxNeighbour = i_bxyz - fluidGridFunctor.gridData1D.getOffset(d);
                         if(xInside && yInside && zInside && fluidGridFunctor.isFluid(i_bxyz) && fluidGridFunctor.isFluid(idxNeighbour)) {
@@ -99,15 +98,14 @@ void AddBuoyancy<GPUDevice>::operator()(
     const CudaFluidGridFunctor fluidGridFunctor(pFluidGrid);
 
 
-  // Launch the cuda kernel.
-  //
-  // See core/util/cuda_kernel_helper.h for example of computing
-  // block count and thread_per_block count.
-  int block_count = 1024;
-  int thread_per_block = 20;
-  //cudaKernelBuoyancy.run<<<block_count, thread_per_block, 0, d.stream()>>>();
-  AddBuoyancyKernel<<<block_count, thread_per_block, 0, d.stream()>>>(fluidGridFunctor, out_vel, force);
+    // Launch the cuda kernel.
+    //
+    // See core/util/cuda_kernel_helper.h for example of computing
+    // block count and thread_per_block count.
+    int block_count = 1024;
+    int thread_per_block = 20;
+    //cudaKernelBuoyancy.run<<<block_count, thread_per_block, 0, d.stream()>>>();
+    addBuoyancyKernel<<<block_count, thread_per_block, 0, d.stream()>>>(fluidGridFunctor, out_vel, force);
 }
-
 
 #endif  // GOOGLE_CUDA

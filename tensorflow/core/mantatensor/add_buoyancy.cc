@@ -29,66 +29,6 @@ REGISTER_OP("AddBuoyancy")
 using CPUDevice = Eigen::ThreadPoolDevice;
 using GPUDevice = Eigen::GpuDevice;
 
-/*
-void fKernel (Size size, void (*f)(int, int), int border, void (*fBorder)(int) ) {
-    int idx = 0;
-    int idxi = 0;
-
-    for (int x = 0; x < size.width; x++) {
-        bool xInside = x >= border && x < size.width - border;
-        for (int y = 0; y < size.height; y++) {
-            bool yInside = y >= border && y < size.height - border;
-            for (int z = 0; z < size.depth; z++) {
-                bool zInside = z > 0 && z < size.depth - 1;
-                for(int i = 0; i < size.dim; i++) {
-                    if(xInside && yInside && zInside) {
-                        f(idx, idxi);
-                    } else {
-                        fBorder(idx);
-                    }
-                    idxi++;
-                }
-                idx++;
-            }
-        }
-    }
-}
-
-*/
-
-
-/*
-class FluidGridBuoyancy : public FluidGrid {
-    float* out_vel;
-    const float* force;
-
-    protected:
-        bool kernelCondition(int idx) {
-            return isFluid(idx);
-        }
-        void kernelFunction(int idx, int idxi, int i) {
-            float value = vel[idxi];
-
-            int idxNeighbour = idx + getDimOffset(i);
-            if(isFluid(idxNeighbour)) {
-                value += (0.5f*force[i]) * (den[idx] + den[idxNeighbour]);
-            }
-
-            out_vel[idxi] = value;
-        }
-        void kernelIdentity(int idxi) {
-            out_vel[idxi] = vel[idxi];
-        }
-
-    public:
-        void setParameter(float* out_vel, const float* force) {
-            this->out_vel = out_vel;
-            this->force = force;
-        }
-};
-
-*/
-
 
 class KernelBuoyancy : public KernelBase {
     private:
@@ -128,13 +68,42 @@ class KernelBuoyancy : public KernelBase {
 
 // CPU specialization of actual computation.
 template <>
-struct AddBuoyancy<CPUDevice> {
-    void operator()(const CPUDevice& d, const FluidGrid* fluidGrid, const float* force, float* out_vel) {
-        FluidGridFunctor fluidGridFunctor(fluidGrid);
+void AddBuoyancy<CPUDevice>::operator()(const CPUDevice& d, const FluidGrid* fluidGrid, const float* force, float* out_vel) {
+    FluidGridFunctor fluidGridFunctor(fluidGrid);
 
-        KernelBuoyancy(fluidGridFunctor, out_vel, force).run();
-  }
-};
+    KernelBuoyancy(fluidGridFunctor, out_vel, force).run();
+
+/*
+    int border = 1;
+    for (int b = 0; b < fluidGridFunctor.getBatches(); b++) {
+        int i_b = b * fluidGridFunctor.getWidth() * fluidGridFunctor.getHeight() * fluidGridFunctor.getDepth();
+
+        for (int x = 0; x < fluidGridFunctor.getWidth(); x++) {
+            int i_bx = i_b + x*fluidGridFunctor.getHeight() * fluidGridFunctor.getDepth();
+            bool xInside = x >= border && x < fluidGridFunctor.getWidth() - border;
+            for (int y = 0; y < fluidGridFunctor.getHeight(); y++) {
+                int i_bxy = i_bx + y * fluidGridFunctor.getDepth();
+                bool yInside = y >= border && y < fluidGridFunctor.getHeight() - border;
+                for (int z = 0; z < fluidGridFunctor.getDepth(); z++) {
+                    int i_bxyz = i_bxy + z;
+                    bool zInside = z >= border && z < fluidGridFunctor.getDepth() - border;
+
+                    for(int d = 0; d < fluidGridFunctor.getDim(); d++) {
+                        int i_bxyzd = i_bxyz * fluidGridFunctor.getDim() + d;
+
+                        int idxNeighbour = i_bxyz - fluidGridFunctor.gridData1D.getOffset(d);
+                        if(xInside && yInside && zInside && fluidGridFunctor.isFluid(i_bxyz) && fluidGridFunctor.isFluid(idxNeighbour)) {
+                            out_vel[i_bxyzd] = fluidGridFunctor.getVelGrid()[i_bxyzd] + 0.5f*force[d] * (fluidGridFunctor.getDenGrid()[i_bxyz] + fluidGridFunctor.getDenGrid()[idxNeighbour]);
+                        } else {
+                            out_vel[i_bxyzd] = fluidGridFunctor.getVelGrid()[i_bxyzd];
+                        }
+                    }
+                }
+            }
+        }
+    }
+    */
+}
 
 template <typename Device>
 class AddBuoyancyOp : public OpKernel {
@@ -200,23 +169,23 @@ class AddBuoyancyOp : public OpKernel {
     OP_REQUIRES_OK(context, context->allocate_output(0, vel_shape, &output_vel_tensor));
 
 
+
     AddBuoyancy<Device>()(
         context->eigen_device<Device>(),
         &fluidGrid,
         force_tensor.flat<float>().data(),
         output_vel_tensor->flat<float>().data());
-
   }
 };
 
 
 // Register the CPU kernels.
 
-/*
+
                                         \
 REGISTER_KERNEL_BUILDER(                                       \
       Name("AddBuoyancy").Device(DEVICE_CPU), AddBuoyancyOp<CPUDevice>);
-*/
+
 
 
 #if GOOGLE_CUDA
@@ -225,9 +194,5 @@ REGISTER_KERNEL_BUILDER(
         Name("AddBuoyancy").Device(DEVICE_GPU), AddBuoyancyOp<GPUDevice>);
 
 #endif
-
-
-
-
 
 

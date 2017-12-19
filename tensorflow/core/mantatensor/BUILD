@@ -9,4 +9,10 @@ tf_custom_op_library(
 tf_custom_op_library(
     name = "advection.so",
     srcs = ["advection.cc", "fluid_grid.h", "fluid_grid_functor.h", "interpolation.h", "advection.h", "vec3.h"],
+    gpu_srcs = ["advection.cu.cc", "fluid_grid.h", "fluid_grid_functor.cu.h", "interpolation.cu.h", "advection.h", "vec3.cu.h"],
+)
+
+tf_custom_op_library(
+    name = "test_empty.so",
+    srcs = ["test_empty.cc"],
 )

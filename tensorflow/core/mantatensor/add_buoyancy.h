@@ -5,7 +5,6 @@
 #include "tensorflow/core/framework/shape_inference.h"
 #include "fluid_grid.h"
 
-
 using namespace tensorflow;
 
 template <typename Device>
