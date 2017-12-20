@@ -113,7 +113,6 @@ class AddBuoyancyOp : public OpKernel {
   void Compute(OpKernelContext* context) override {
     // Grab the input tensor
 
-
     const Tensor& input_vel_tensor = context->input(0);
     TensorShape vel_shape = input_vel_tensor.shape();
     auto input_vel_flat = input_vel_tensor.flat<float>();
@@ -131,10 +130,10 @@ class AddBuoyancyOp : public OpKernel {
 
     OP_REQUIRES(context, vel_shape.dims() == 5,
                  errors::InvalidArgument("AddBuoyancy expects as first parameter a 5-D float velocity array: batches, width, height, depth, dimension"));
-    OP_REQUIRES(context, flag_grid_shape.dims() == 4,
-                 errors::InvalidArgument("AddBuoyancy expects as second parameter a 4-D int flags array: batches, width, height, depth"));
-    OP_REQUIRES(context, density_shape.dims() == 4,
-                 errors::InvalidArgument("AddBuoyancy expects as third parameter a 4-D float density array: batches, width, height, depth"));
+    OP_REQUIRES(context, flag_grid_shape.dims() == 5,
+                 errors::InvalidArgument("AddBuoyancy expects as second parameter a 5-D int flags array: batches, width, height, depth, 1"));
+    OP_REQUIRES(context, density_shape.dims() == 5,
+                 errors::InvalidArgument("AddBuoyancy expects as third parameter a 5-D float density array: batches, width, height, depth, 1"));
     OP_REQUIRES(context, TensorShapeUtils::IsVector(force_shape),
                  errors::InvalidArgument("AddBuoyancy expects as fourth parameter a 1-D float force array: dimension"));
 
@@ -148,8 +147,9 @@ class AddBuoyancyOp : public OpKernel {
     OP_REQUIRES(context, isSameValue({vel_shape.dim_size(3), flag_grid_shape.dim_size(3), density_shape.dim_size(3)}),
                  errors::InvalidArgument("AddBuoyancy expects that the depth size is equal for all inputs"));
     OP_REQUIRES(context, isSameValue({vel_shape.dim_size(4), force_shape.dim_size(0)}),
-                 errors::InvalidArgument("AddBuoyancy expects that the dimension size is equal for all inputs"));
-
+                 errors::InvalidArgument("AddBuoyancy expects that the dimension size is equal for the velocity and force input"));
+    OP_REQUIRES(context, isSameValue({flag_grid_shape.dim_size(4), density_shape.dim_size(0), 1L}),
+                 errors::InvalidArgument("AddBuoyancy expects that the dimension size is equal to 1 for flags and density input"));
 
     const FluidGrid fluidGrid = {
         vel_shape.dim_size(0),              // batches

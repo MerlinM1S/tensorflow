@@ -16,3 +16,9 @@ tf_custom_op_library(
     name = "test_empty.so",
     srcs = ["test_empty.cc"],
 )
+
+
+tf_custom_op_library(
+    name = "apply_to_array.so",
+    srcs = ["apply_to_array.cc"],
+)
