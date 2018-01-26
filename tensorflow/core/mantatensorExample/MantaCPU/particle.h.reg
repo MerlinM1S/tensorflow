@@ -1,0 +1,7 @@
+#include "particle.h"
+>ParticleDataImpl^int
+
+>ParticleDataImpl^Real
+
+>ParticleDataImpl^Vec3
+

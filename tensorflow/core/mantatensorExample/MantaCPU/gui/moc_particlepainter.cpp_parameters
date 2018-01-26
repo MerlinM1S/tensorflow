@@ -1,0 +1,10 @@
+-DMANTAVERSION="0.11"
+-DDEBUG=1
+-DNOPYTHON=1
+-DNUMPY=1
+-DMT=1
+-DOPENMP=1
+-DGUI=1
+-o
+/home/ansorge/workspace_master/manta/build/pp/source/gui/moc_particlepainter.cpp
+/home/ansorge/workspace_master/manta/build/pp/source/gui/particlepainter.h
